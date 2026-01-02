@@ -10,10 +10,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ------------------ HEALTH CHECK ------------------ */
-app.get("/", (req, res) => {
-  res.send("🚀 Server is running");
-});
+app.use(express.static("public"));
+
+
+// /* ------------------ HEALTH CHECK ------------------ */
+// app.get("/", (req, res) => {
+//   res.send("🚀 Server is running");
+// });
 
 /* ------------------ FETCH TEACHER SESSIONS + DEMO_SCHEDULED ------------------ */
 app.get("/api/all-schedules", async (req, res) => {

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WiseLMS Server</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      height: 100vh;
+      background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      overflow: hidden;
+    }
+
+    .container {
+      text-align: center;
+      animation: fadeIn 1.5s ease-in-out;
+    }
+
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 1.2rem;
+      opacity: 0.85;
+    }
+
+    .loader {
+      margin: 30px auto;
+      width: 70px;
+      height: 70px;
+      border: 6px solid rgba(255, 255, 255, 0.2);
+      border-top: 6px solid #00e6ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .status {
+      margin-top: 20px;
+      font-size: 0.95rem;
+      opacity: 0.7;
+    }
+
+    /* Animations */
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h1>🚀 WiseLMS API</h1>
+    <p>Server is running</p>
+
+    <div class="loader"></div>
+
+    <div class="status" id="statusText">
+      Connecting to MongoDB...
+    </div>
+  </div>
+
+  <script>
+    // Simple animated status text
+    const messages = [
+      "MongoDB connected",
+      "APIs are live",
+      "Waiting for requests..."
+    ];
+
+    let index = 0;
+    const statusEl = document.getElementById("statusText");
+
+    setInterval(() => {
+      statusEl.textContent = messages[index];
+      index = (index + 1) % messages.length;
+    }, 2000);
+  </script>
+
+</body>
+</html>
