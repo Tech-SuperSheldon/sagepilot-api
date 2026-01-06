@@ -19,29 +19,48 @@ app.use(express.static("public"));
 // });
 
 /* ------------------ FETCH TEACHER SESSIONS + DEMO_SCHEDULED ------------------ */
-app.get("/api/all-schedules", async (req, res) => {
+app.post("/api/all-schedules", async (req, res) => {
   try {
     const db = mongoose.connection;
 
-    const teacherId = req.query.teacher_id;
-    if (!teacherId) {
+    const { phoneNumber, page = 1 } = req.body;
+
+    if (!phoneNumber) {
       return res.status(400).json({
         success: false,
-        message: "teacher_id is required"
+        message: "phoneNumber is required"
       });
     }
 
     const now = new Date();
 
+    const teachersCollection = db.collection("teachers");
     const sessionsCollection = db.collection("sessions");
-    const demoScheduledCollection = db.collection("demo_scheduled");
+    const demoScheduledCollection = db.collection("meeting_links");
 
-    /* ------------------ FETCH NEXT 5 UPCOMING SESSIONS ------------------ */
+
+    /* ------------------ STEP 1: FIND TEACHER BY PHONE ------------------ */
+    const teacher = await teachersCollection.findOne({
+      "userId.phoneNumber": phoneNumber,
+      relation: "TEACHER",
+      status: "ACCEPTED"
+    });
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found for this phone number"
+      });
+    }
+
+    const teacherUserId = teacher.userId._id;
+
+    /* ------------------ STEP 2: FETCH UPCOMING SESSIONS ------------------ */
     const sessions = await sessionsCollection
       .aggregate([
         {
           $match: {
-            "userId._id": teacherId,
+            "userId._id": teacherUserId,
             meetingStatus: "UPCOMING"
           }
         },
@@ -66,9 +85,8 @@ app.get("/api/all-schedules", async (req, res) => {
       ])
       .toArray();
 
-    /* ------------------ FETCH DEMO_SCHEDULED (UNCHANGED) ------------------ */
+    /* ------------------ DEMO_SCHEDULED (UNCHANGED) ------------------ */
     const limit = 5;
-    const page = parseInt(req.query.page || "1", 10);
     const skip = (page - 1) * limit;
 
     const demoRaw = await demoScheduledCollection
@@ -78,19 +96,24 @@ app.get("/api/all-schedules", async (req, res) => {
       .limit(limit)
       .toArray();
 
-    const demo_scheduled = demoRaw.map(d => ({
-      _id: d._id,
-      airtableId: d.airtableId || d.id,
-      autoId: d["Auto ID"],
-      student_name: d["Student Name (from Student ID)"],
-      teacher_name: d["Demo Teacher Name"],
-      meeting_link: d["Meeting link"],
-      created_time: d.createdTime
-    }));
+      const demo_scheduled = demoRaw.map(d => ({
+        _id: d._id,
+        airtableId: d.airtableId || d.id,
+        index: d.Index || null,
+        meeting_link: d["New link"] || d.Link || null,
+        original_link: d.Link || null,
+        created_time: d.createdTime
+      }));
 
+
+    /* ------------------ RESPONSE ------------------ */
     res.status(200).json({
       success: true,
-      teacher_id: teacherId,
+      teacher: {
+        id: teacherUserId,
+        name: teacher.userId.name,
+        phoneNumber: teacher.userId.phoneNumber
+      },
       counts: {
         sessions: sessions.length,
         demo_scheduled: demo_scheduled.length
