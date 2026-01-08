@@ -9,20 +9,12 @@ const app = express();
 /* ------------------ MIDDLEWARE ------------------ */
 app.use(cors());
 app.use(express.json());
-
 app.use(express.static("public"));
-
-
-// /* ------------------ HEALTH CHECK ------------------ */
-// app.get("/", (req, res) => {
-//   res.send("🚀 Server is running");
-// });
 
 /* ------------------ FETCH TEACHER SESSIONS + DEMO_SCHEDULED ------------------ */
 app.post("/api/all-schedules", async (req, res) => {
   try {
     const db = mongoose.connection;
-
     const { phoneNumber, page = 1 } = req.body;
 
     if (!phoneNumber) {
@@ -37,7 +29,6 @@ app.post("/api/all-schedules", async (req, res) => {
     const teachersCollection = db.collection("teachers");
     const sessionsCollection = db.collection("sessions");
     const demoScheduledCollection = db.collection("meeting_links");
-
 
     /* ------------------ STEP 1: FIND TEACHER BY PHONE ------------------ */
     const teacher = await teachersCollection.findOne({
@@ -56,7 +47,7 @@ app.post("/api/all-schedules", async (req, res) => {
     const teacherUserId = teacher.userId._id;
 
     /* ------------------ STEP 2: FETCH UPCOMING SESSIONS ------------------ */
-    const sessions = await sessionsCollection
+    const sessionsRaw = await sessionsCollection
       .aggregate([
         {
           $match: {
@@ -66,15 +57,11 @@ app.post("/api/all-schedules", async (req, res) => {
         },
         {
           $addFields: {
-            scheduledStartTimeDate: {
-              $toDate: "$scheduledStartTime"
-            }
+            scheduledStartTimeDate: { $toDate: "$scheduledStartTime" }
           }
         },
         {
-          $match: {
-            scheduledStartTimeDate: { $gte: now }
-          }
+          $match: { scheduledStartTimeDate: { $gte: now } }
         },
         {
           $sort: { scheduledStartTimeDate: 1 }
@@ -85,7 +72,29 @@ app.post("/api/all-schedules", async (req, res) => {
       ])
       .toArray();
 
-    /* ------------------ DEMO_SCHEDULED (UNCHANGED) ------------------ */
+    // Simplify sessions
+    const sessions = sessionsRaw.map(s => ({
+      _id: s._id,
+      attendanceRecorded: s.attendanceRecorded,
+      canRestart: s.canRestart,
+      classId: s.classId,
+      className: s.className,
+      classNumber: s.classNumber,
+      classSubject: s.classSubject,
+      classType: s.classType,
+      createdAt: s.createdAt,
+      demoSession: s.demoSession,
+      endTime: s.endTime || s.end_time || null,
+      meetingStatus: s.meetingStatus,
+      mettingEnded: s.mettingEnded,
+      scheduledStartTime: s.scheduledStartTime,
+      scheduledEndTime: s.scheduledEndTime,
+      startTime: s.startTime,
+      title: s.title,
+      type: s.type
+    }));
+
+    /* ------------------ STEP 3: FETCH DEMO SCHEDULED ------------------ */
     const limit = 5;
     const skip = (page - 1) * limit;
 
@@ -96,15 +105,14 @@ app.post("/api/all-schedules", async (req, res) => {
       .limit(limit)
       .toArray();
 
-      const demo_scheduled = demoRaw.map(d => ({
-        _id: d._id,
-        airtableId: d.airtableId || d.id,
-        index: d.Index || null,
-        meeting_link: d["New link"] || d.Link || null,
-        original_link: d.Link || null,
-        created_time: d.createdTime
-      }));
-
+    const demo_scheduled = demoRaw.map(d => ({
+      _id: d._id,
+      airtableId: d.airtableId || d.id,
+      index: d.Index || null,
+      meeting_link: d["New link"] || d.Link || null,
+      original_link: d.Link || null,
+      created_time: d.createdTime
+    }));
 
     /* ------------------ RESPONSE ------------------ */
     res.status(200).json({
@@ -121,7 +129,6 @@ app.post("/api/all-schedules", async (req, res) => {
       sessions,
       demo_scheduled
     });
-
   } catch (error) {
     console.error("❌ Error fetching schedules:", error);
     res.status(500).json({
@@ -131,8 +138,6 @@ app.post("/api/all-schedules", async (req, res) => {
     });
   }
 });
-
-
 
 /* ------------------ START SERVER ------------------ */
 const PORT = process.env.PORT || 3000;
