@@ -2,14 +2,30 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const axios = require("axios");
 const { connect } = require("./db");
+const availabilityRoute = require("./routes/availability"); 
+const upcomingSessionsRoute = require("./routes/upcomingSessions");
+const wiseStudentDetailsRoute = require("./routes/wiseStudentDetails");
+const airtableStudentDetailsRoute = require("./routes/airtableStudentDetails");
+const homeworkRoute = require("./routes/homework");
 
 const app = express();
+
 
 /* ------------------ MIDDLEWARE ------------------ */
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
+
+
+//routes
+app.use("/api/availability", availabilityRoute);
+app.use("/api/upcoming-sessions", upcomingSessionsRoute);
+app.use("/api/students", wiseStudentDetailsRoute);
+app.use("/api/airtable-students", airtableStudentDetailsRoute);
+app.use("/api/homework", homeworkRoute);
+
 
 /* ------------------ FETCH TEACHER SESSIONS + DEMO_SCHEDULED ------------------ */
 app.post("/api/all-schedules", async (req, res) => {
@@ -72,7 +88,6 @@ app.post("/api/all-schedules", async (req, res) => {
       ])
       .toArray();
 
-    // Simplify sessions
     const sessions = sessionsRaw.map(s => ({
       _id: s._id,
       attendanceRecorded: s.attendanceRecorded,
@@ -114,7 +129,6 @@ app.post("/api/all-schedules", async (req, res) => {
       created_time: d.createdTime
     }));
 
-    /* ------------------ RESPONSE ------------------ */
     res.status(200).json({
       success: true,
       teacher: {
@@ -138,6 +152,7 @@ app.post("/api/all-schedules", async (req, res) => {
     });
   }
 });
+
 
 /* ------------------ START SERVER ------------------ */
 const PORT = process.env.PORT || 3000;
